@@ -1,0 +1,11 @@
+torch>=2.0.0
+torchaudio>=2.0.0
+transformers>=4.30.0
+datasets>=2.14.0
+jiwer>=3.0.0
+numpy>=1.24.0
+soundfile>=0.12.1
+huggingface-hub>=0.16.0
+wandb>=0.15.0
+tqdm>=4.65.0
+scipy>=1.11.0
