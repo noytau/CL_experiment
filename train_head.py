@@ -125,11 +125,11 @@ def main():
     print(f"CTC head params: {n_params:,}  (vocab_size={vocab_size})")
 
     # ── Data ──────────────────────────────────────────────────────────────────
-    print("\nLoading LibriSpeech clean train.100 …")
+    print("\nLoading LibriSpeech clean train.100 (streaming) …")
     raw_train = load_dataset("librispeech_asr", "clean", split="train.100",
-                             trust_remote_code=True)
+                             streaming=True)
     raw_val   = load_dataset("librispeech_asr", "clean", split="validation",
-                             trust_remote_code=True)
+                             streaming=True)
 
     train_samples = list(raw_train.take(args.n_train)) if args.n_train > 0 else list(raw_train)
     val_samples   = list(raw_val.take(args.n_val))
