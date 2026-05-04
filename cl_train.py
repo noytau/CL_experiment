@@ -5,7 +5,7 @@ Continual Learning experiment: data2vec-audio + RandOpt vs. naive fine-tuning.
 
 Experiment design (two-task sequential protocol):
   • Task A  : LibriSpeech clean   (validation split, first N_SAMPLES utterances)
-  • Task B  : LibriSpeech other   (validation split, first N_SAMPLES utterances)
+  • Task B  : TEDLIUM release3    (test split, first N_SAMPLES utterances)
 
 Two adaptation strategies are compared:
   1. Baseline (frozen encoder)  — no adaptation at all.
@@ -22,6 +22,7 @@ Usage:
 
 import argparse
 import copy
+import os
 import torch
 import torch.nn as nn
 from transformers import Data2VecAudioModel, Wav2Vec2Processor
@@ -49,21 +50,31 @@ def parse_args():
                    help="LR for naive gradient fine-tuning baseline")
     p.add_argument("--finetune_steps", type=int, default=20,
                    help="Gradient update steps for naive fine-tuning baseline")
+    p.add_argument("--ctc_head_ckpt", type=str,
+                   default="checkpoints/exp1/best_ctc_head.pt",
+                   help="Trained CTC head from train_head.py (must exist)")
     p.add_argument("--device", type=str,
                    default="cuda" if torch.cuda.is_available() else "cpu")
     return p.parse_args()
 
 
 # ── Data ──────────────────────────────────────────────────────────────────────
-def load_samples(config: str, n: int):
-    print(f"  Loading librispeech_asr [{config}] validation …")
-    ds = load_dataset(
-        "librispeech_asr", config,
-        split="validation",
-        streaming=False,
-        trust_remote_code=True,
-    )
+def load_samples_librispeech(n: int):
+    print("  Loading librispeech_asr [clean] validation …")
+    ds = load_dataset("librispeech_asr", "clean", split="validation",
+                      trust_remote_code=True)
     return list(ds.take(n))
+
+
+def load_samples_tedlium(n: int):
+    print("  Loading TEDLIUM release3 test …")
+    ds = load_dataset("LIUM/tedlium", "release3", split="test",
+                      trust_remote_code=True)
+    # TEDLIUM uses 'text' field like LibriSpeech; normalize the same way
+    samples = list(ds.take(n))
+    for s in samples:
+        s["text"] = s["text"].strip().lower().replace("<unk>", "")
+    return samples
 
 
 def batch_to_inputs(samples, processor, device):
@@ -167,16 +178,22 @@ def main():
     device = args.device
     print(f"Device: {device}\n")
 
-    # Load processor and build shared frozen CTC head
+    # Load processor and CTC head trained by train_head.py (Exp 1)
     processor = Wav2Vec2Processor.from_pretrained(PROCESSOR_NAME)
     vocab_size = processor.tokenizer.vocab_size
     ctc_head   = torch.nn.Linear(HIDDEN_DIM, vocab_size).to(device)
-    torch.nn.init.xavier_uniform_(ctc_head.weight)
+    if not os.path.exists(args.ctc_head_ckpt):
+        raise FileNotFoundError(
+            f"CTC head checkpoint not found: {args.ctc_head_ckpt}\n"
+            "Run train_head.py (Exp 1) first."
+        )
+    ctc_head.load_state_dict(torch.load(args.ctc_head_ckpt, map_location=device))
     ctc_head.eval()
+    print(f"Loaded CTC head from {args.ctc_head_ckpt}\n")
 
     # Load data
-    samples_a = load_samples("clean", args.n_samples)
-    samples_b = load_samples("other", args.n_samples)
+    samples_a = load_samples_librispeech(args.n_samples)
+    samples_b = load_samples_tedlium(args.n_samples)
     iv_b, refs_b = batch_to_inputs(samples_b, processor, device)
 
     # Load pretrained encoder once
