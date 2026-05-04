@@ -1,0 +1,23 @@
+name: cl_exp
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pytorch>=2.0.0
+  - torchaudio>=2.0.0
+  - pytorch-cuda=11.8
+  - pip
+  - pip:
+    - transformers>=4.30.0
+    - datasets>=4.0.0
+    - torchcodec
+    - jiwer>=3.0.0
+    - soundfile>=0.12.1
+    - huggingface-hub>=0.16.0
+    - wandb>=0.15.0
+    - tqdm>=4.65.0
+    - scipy>=1.11.0
+    - numpy>=1.24.0

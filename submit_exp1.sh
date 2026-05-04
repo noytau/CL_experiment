@@ -12,7 +12,7 @@ CKPT_DIR="/storage/noy/CL_experiment/checkpoints/exp1"
 HF_HOME="/storage/noy/hf_cache"
 
 runai submit "${JOB_NAME}" \
-  --project CL_poc \
+  --project raja \
   --image "${IMAGE}" \
   --gpu-memory 40G \
   --node-pools faculty,raja \
@@ -20,8 +20,13 @@ runai submit "${JOB_NAME}" \
   -e WANDB_API_KEY="${WANDB_API_KEY}" \
   -e HF_HOME="${HF_HOME}" \
   -- bash -c "
-    conda run -n spectralfm pip install jiwer -q &&
-    conda run -n spectralfm python ${CODE_DIR}/train_head.py \
+    if [ ! -d ${CODE_DIR} ]; then
+      git clone https://github.com/noytau/CL_experiment.git ${CODE_DIR};
+    else
+      cd ${CODE_DIR} && git pull;
+    fi &&
+    cd ${CODE_DIR} &&
+    conda run -n cl_exp python ${CODE_DIR}/train_head.py \
       --n_train    500 \
       --n_val      100 \
       --batch_size 8   \
